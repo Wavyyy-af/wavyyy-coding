@@ -1,0 +1,63 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+from bs4 import BeautifulSoup
+import pandas as pd
+import time
+
+# Set up Selenium WebDriver
+options = webdriver.ChromeOptions()
+options.add_argument('--headless')  # Run in headless mode
+driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+
+# URL of the webpage to scrape
+url = 'https://www.lbma.org.uk/prices-and-data/precious-metal-prices#/table'
+
+# Fetch the webpage
+driver.get(url)
+
+# Allow some time for the page to load dynamically
+time.sleep(5)
+
+# Get the page source
+html_content = driver.page_source
+
+# Close the driver
+driver.quit()
+
+# Parse the HTML content using BeautifulSoup
+soup = BeautifulSoup(html_content, 'html.parser')
+
+# Find the div with class 'table'
+table_div = soup.find('div', class_='table')
+
+# Check if the table_div is found
+if table_div:
+    # Find the table within this div
+    table = table_div.find('table')
+
+    # Check if the table is found
+    if table:
+        # Extract headers (skipping the first blank header)
+        headers = ['Date', 'USD AM', 'USD PM', 'GBP AM', 'GBP PM', 'EUR AM', 'EUR PM']
+
+        # Extract rows
+        rows = []
+        for tr in table.find('tbody').find_all('tr'):
+            cells = tr.find_all('td')
+            row = [cell.text.strip() for cell in cells]
+            rows.append(row)
+
+        # Get the most recent 100 rows
+        latest_rows = rows[:100]
+
+        # Create DataFrame
+        df = pd.DataFrame(latest_rows, columns=headers)
+
+        # Display DataFrame
+        print(df)
+    else:
+        print("Table not found in the specified div.")
+else:
+    print("Div with class 'table' not found.")
